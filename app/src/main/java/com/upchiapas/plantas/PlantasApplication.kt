@@ -1,9 +1,15 @@
 package com.upchiapas.plantas
 
 import android.app.Application
+import com.upchiapas.plantas.di.AppContainer
 
-/**
- * Punto de entrada de la app. Aquí se creará una sola vez el AppContainer
- * (contenedor de dependencias) en un commit posterior.
- */
-class PlantasApplication : Application()
+class PlantasApplication : Application() {
+
+    lateinit var container: AppContainer
+        private set
+
+    override fun onCreate() {
+        super.onCreate()
+        container = AppContainer(this)
+    }
+}

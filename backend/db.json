@@ -1,0 +1,50 @@
+{
+  "users": [],
+  "plants": [
+    {
+      "id": 1,
+      "name": "Sábila",
+      "species": "Aloe vera",
+      "wateringIntervalDays": 14,
+      "plantingDate": "2026-03-10",
+      "lastWateredDate": "2026-10-25",
+      "needsSun": true
+    },
+    {
+      "id": 2,
+      "name": "Monstera",
+      "species": "Monstera deliciosa",
+      "wateringIntervalDays": 7,
+      "plantingDate": "2026-02-01",
+      "lastWateredDate": "2026-10-29",
+      "needsSun": false
+    },
+    {
+      "id": 3,
+      "name": "Helecho",
+      "species": "Nephrolepis exaltata",
+      "wateringIntervalDays": 3,
+      "plantingDate": "2026-05-20",
+      "lastWateredDate": "2026-11-01",
+      "needsSun": false
+    },
+    {
+      "id": 4,
+      "name": "Suculenta",
+      "species": "Echeveria elegans",
+      "wateringIntervalDays": 21,
+      "plantingDate": "2026-04-02",
+      "lastWateredDate": "2026-10-15",
+      "needsSun": true
+    },
+    {
+      "id": 5,
+      "name": "Menta",
+      "species": "Mentha spicata",
+      "wateringIntervalDays": 2,
+      "plantingDate": "2026-08-12",
+      "lastWateredDate": "2026-11-02",
+      "needsSun": true
+    }
+  ]
+}
