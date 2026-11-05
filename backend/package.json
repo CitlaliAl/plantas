@@ -1,0 +1,14 @@
+{
+  "name": "plantas-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API local de Cuidado de Plantas (Node, sin dependencias)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "start:fresh": "node server.js --reset",
+    "test": "node --test"
+  }
+}

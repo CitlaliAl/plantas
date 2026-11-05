@@ -1,8 +1,16 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": 1,
+      "name": "Usuario Demo",
+      "email": "demo@plantas.com",
+      "passwordHash": "8fb9b9e527e7bc4128ecf6a07cf2f0db:dff8a8efe7449128e2773dbdc705712b86e8522475c4016a041b16ee0a6c28d8e0d55f59aace1fa0a3e29ad29e0d5ef2cbe758436439cf0281a7f75248f1d23e"
+    }
+  ],
   "plants": [
     {
       "id": 1,
+      "userId": 1,
       "name": "Sábila",
       "species": "Aloe vera",
       "wateringIntervalDays": 14,
@@ -12,6 +20,7 @@
     },
     {
       "id": 2,
+      "userId": 1,
       "name": "Monstera",
       "species": "Monstera deliciosa",
       "wateringIntervalDays": 7,
@@ -21,6 +30,7 @@
     },
     {
       "id": 3,
+      "userId": 1,
       "name": "Helecho",
       "species": "Nephrolepis exaltata",
       "wateringIntervalDays": 3,
@@ -30,15 +40,17 @@
     },
     {
       "id": 4,
+      "userId": 1,
       "name": "Suculenta",
       "species": "Echeveria elegans",
       "wateringIntervalDays": 21,
       "plantingDate": "2026-04-02",
-      "lastWateredDate": "2026-10-15",
+      "lastWateredDate": "2026-10-10",
       "needsSun": true
     },
     {
       "id": 5,
+      "userId": 1,
       "name": "Menta",
       "species": "Mentha spicata",
       "wateringIntervalDays": 2,
