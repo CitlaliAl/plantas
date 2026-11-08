@@ -203,3 +203,40 @@ test('errores generales: ruta inexistente, método no permitido y JSON roto', as
   const broken = await api('POST', '/login', { raw: '{no es json' });
   assert.equal(broken.status, 400);
 });
+
+test('tokens: un token firmado pero que no está en el historial se rechaza', async () => {
+  const unregistered = signToken({ sub: '1', jti: 'inventado' }, SECRET, 3600);
+  assert.equal((await api('GET', '/plants', { token: unregistered })).status, 401);
+});
+
+test('tokens: el historial lista los tokens del usuario y no incluye los de otros', async () => {
+  const first = (await api('POST', '/login', { body: DEMO })).body.accessToken;
+  const second = (await api('POST', '/login', { body: DEMO })).body.accessToken;
+  const history = await api('GET', '/tokens', { token: second });
+  assert.equal(history.status, 200);
+  assert.ok(history.body.length >= 2);
+  assert.equal(history.body.filter((t) => t.current).length, 1);
+  assert.equal(history.body[0].status, 'active');
+  assert.equal(history.body[0].accessToken, undefined, 'el historial no expone tokens');
+  assert.ok(first);
+
+  const other = await newUserToken('historial@mail.com');
+  const mine = await api('GET', '/tokens', { token: other });
+  assert.equal(mine.body.length, 1);
+  assert.equal((await api('GET', '/tokens')).status, 401);
+});
+
+test('logout: revoca el token, queda en el historial y deja de servir', async () => {
+  const token = await newUserToken('salida@mail.com');
+  const other = (await api('POST', '/login', { body: { email: 'salida@mail.com', password: 'password123' } })).body.accessToken;
+
+  assert.equal((await api('POST', '/logout', { token })).status, 200);
+  assert.equal((await api('GET', '/plants', { token })).status, 401);
+  assert.equal((await api('POST', '/logout', { token })).status, 401);
+
+  const history = await api('GET', '/tokens', { token: other });
+  assert.deepEqual(history.body.map((t) => t.status).sort(), ['active', 'revoked']);
+  assert.ok(history.body.find((t) => t.status === 'revoked').revokedAt);
+  assert.equal((await api('GET', '/plants', { token: other })).status, 200, 'la otra sesión sigue activa');
+  assert.equal((await api('GET', '/logout')).status, 405);
+});

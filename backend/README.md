@@ -16,4 +16,6 @@ npm test             # pruebas automáticas de la API
 
 Variables opcionales: `PORT` (3000), `HOST` (127.0.0.1), `JWT_SECRET`, `TOKEN_TTL_HOURS` (24).
 
+Endpoints extra: `POST /logout` (revoca el token) y `GET /tokens` (historial de tokens del usuario).
+
 El contrato completo (endpoints, validaciones y códigos de estado) está en [`docs/API.md`](../docs/API.md).

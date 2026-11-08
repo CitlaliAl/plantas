@@ -1,6 +1,7 @@
-// API REST de Cuidado de Plantas: /register, /login y CRUD de /plants.
+// API REST de Cuidado de Plantas: /register, /login, /logout, /tokens y CRUD de /plants.
 // Los datos viven en un archivo JSON (db.json) y cada usuario solo ve sus plantas.
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const http = require('node:http');
 const { hashPassword, verifyPassword, signToken, verifyToken } = require('./auth');
 const { validateRegister, validateLogin, validatePlant } = require('./validate');
@@ -38,6 +39,7 @@ function createServer({ dbPath, secret, ttlSeconds = 24 * 3600, log = false }) {
   const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
   db.users ??= [];
   db.plants ??= [];
+  db.tokens ??= []; // historial de tokens emitidos (uno por login/registro)
 
   const save = () => {
     const tmp = `${dbPath}.tmp`;
@@ -47,17 +49,34 @@ function createServer({ dbPath, secret, ttlSeconds = 24 * 3600, log = false }) {
   const nextId = (list) => list.reduce((max, item) => Math.max(max, item.id), 0) + 1;
   const publicUser = ({ id, name, email }) => ({ id, name, email });
   const publicPlant = ({ userId, ...plant }) => plant;
-  const sessionFor = (user) => ({
-    accessToken: signToken({ sub: String(user.id), email: user.email }, secret, ttlSeconds),
-    user: publicUser(user),
-  });
+  const clientIp = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+
+  // Cada token lleva un jti y se registra en el historial; así se puede listar y revocar.
+  function sessionFor(user, req) {
+    const jti = crypto.randomUUID();
+    const accessToken = signToken({ sub: String(user.id), email: user.email, jti }, secret, ttlSeconds);
+    const { iat, exp } = verifyToken(accessToken, secret);
+    db.tokens.push({
+      jti,
+      userId: user.id,
+      issuedAt: new Date(iat * 1000).toISOString(),
+      expiresAt: new Date(exp * 1000).toISOString(),
+      ip: clientIp(req),
+      userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
+      revokedAt: null,
+    });
+    save();
+    return { accessToken, user: publicUser(user) };
+  }
+  const tokenStatus = (t) => (t.revokedAt ? 'revoked' : Date.parse(t.expiresAt) < Date.now() ? 'expired' : 'active');
 
   function authenticate(req) {
     const [scheme, token] = (req.headers.authorization || '').split(' ');
     const payload = scheme === 'Bearer' && token ? verifyToken(token, secret) : null;
     const user = payload && db.users.find((u) => u.id === Number(payload.sub));
-    if (!user) throw httpError(401, 'Sesión no válida o expirada');
-    return user;
+    const record = payload && db.tokens.find((t) => t.jti === payload.jti && t.userId === user?.id);
+    if (!user || !record || record.revokedAt) throw httpError(401, 'Sesión no válida o expirada');
+    return { user, record };
   }
 
   async function register(req, res) {
@@ -72,7 +91,7 @@ function createServer({ dbPath, secret, ttlSeconds = 24 * 3600, log = false }) {
     };
     db.users.push(user);
     save();
-    send(res, 201, sessionFor(user));
+    send(res, 201, sessionFor(user, req));
   }
 
   async function login(req, res) {
@@ -82,11 +101,11 @@ function createServer({ dbPath, secret, ttlSeconds = 24 * 3600, log = false }) {
     if (!user || !verifyPassword(value.password, user.passwordHash)) {
       throw httpError(401, 'Correo o contraseña incorrectos');
     }
-    send(res, 200, sessionFor(user));
+    send(res, 200, sessionFor(user, req));
   }
 
   async function plants(req, res, rawId) {
-    const user = authenticate(req);
+    const { user } = authenticate(req);
     const mine = db.plants.filter((p) => p.userId === user.id);
 
     if (rawId === undefined) {
@@ -122,6 +141,31 @@ function createServer({ dbPath, secret, ttlSeconds = 24 * 3600, log = false }) {
     throw httpError(405, 'Método no permitido');
   }
 
+  async function logout(req, res) {
+    const { record } = authenticate(req);
+    record.revokedAt = new Date().toISOString();
+    save();
+    send(res, 200, {});
+  }
+
+  async function tokens(req, res) {
+    const { user, record } = authenticate(req);
+    const history = db.tokens
+      .filter((t) => t.userId === user.id)
+      .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
+      .map((t) => ({
+        id: t.jti,
+        issuedAt: t.issuedAt,
+        expiresAt: t.expiresAt,
+        revokedAt: t.revokedAt,
+        status: tokenStatus(t),
+        current: t.jti === record.jti,
+        ip: t.ip,
+        userAgent: t.userAgent,
+      }));
+    send(res, 200, history);
+  }
+
   async function route(req, res) {
     const { pathname } = new URL(req.url, 'http://localhost');
     const parts = pathname.split('/').filter(Boolean);
@@ -130,6 +174,11 @@ function createServer({ dbPath, secret, ttlSeconds = 24 * 3600, log = false }) {
     if ((resource === 'register' || resource === 'login') && parts.length === 1) {
       if (req.method !== 'POST') throw httpError(405, 'Método no permitido');
       return resource === 'register' ? register(req, res) : login(req, res);
+    }
+    if ((resource === 'logout' || resource === 'tokens') && parts.length === 1) {
+      const expected = resource === 'logout' ? 'POST' : 'GET';
+      if (req.method !== expected) throw httpError(405, 'Método no permitido');
+      return resource === 'logout' ? logout(req, res) : tokens(req, res);
     }
     if (resource === 'plants' && parts.length <= 2) return plants(req, res, rawId);
     throw httpError(404, 'Ruta no encontrada');

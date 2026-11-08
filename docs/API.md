@@ -14,7 +14,9 @@ La app Android consume una API REST por HTTP con Retrofit. La API permite regist
 | Formato | JSON; fechas como texto `yyyy-MM-dd` |
 | Autenticación | JWT HS256 en `Authorization: Bearer <token>`; vigencia de 24 h |
 | Contraseñas | Se guardan con hash scrypt y sal; nunca salen en una respuesta |
-| Fuera de alcance | Recuperar contraseña, renovar token, paginación, búsqueda, imágenes, HTTPS |
+| Historial de tokens | Cada login/registro guarda el token emitido (jti, fechas, IP, dispositivo, estado); `/logout` lo revoca |
+| HTTPS | En AWS, un proxy inverso (Caddy) con certificado Let's Encrypt; Node escucha solo en localhost |
+| Fuera de alcance | Recuperar contraseña, renovar token, paginación, búsqueda, imágenes |
 
 La API cumple el contrato mínimo del enunciado: `/register`, `/login` y el CRUD `/{recursos}`. Usa los mismos endpoints y la misma forma de respuesta de registro y login que `json-server-auth` (`accessToken` + `user`).
 
@@ -63,6 +65,8 @@ El dueño de la planta (`userId`) se guarda en el servidor y no viaja en las res
 |---|---|---|---|---|
 | POST | `/register` | No | 201 `{accessToken, user}` | 400, 409 |
 | POST | `/login` | No | 200 `{accessToken, user}` | 400, 401 |
+| POST | `/logout` | Sí | 200 `{}` (revoca el token actual) | 401 |
+| GET | `/tokens` | Sí | 200 `[Token]` (historial del usuario) | 401 |
 | GET | `/plants` | Sí | 200 `[Planta]` | 401 |
 | GET | `/plants/{id}` | Sí | 200 `Planta` | 401, 404 |
 | POST | `/plants` | Sí | 201 `Planta` | 400, 401 |
@@ -121,9 +125,21 @@ Los demás errores traen solo `message`, por ejemplo `{ "message": "Sesión no v
 1. `POST /register` o `POST /login` devuelve `accessToken`.
 2. La app lo guarda detrás de la interfaz `SessionStorage` (SharedPreferences).
 3. `AuthInterceptor` de OkHttp agrega `Authorization: Bearer <token>` en cada petición, de modo que ningún endpoint de Retrofit lleva `@Header`.
-4. El servidor verifica la firma HMAC-SHA256 y la vigencia (`exp`) en cada petición a `/plants`.
+4. El servidor verifica la firma HMAC-SHA256, la vigencia (`exp`) y que el `jti` exista en el historial sin revocar, en cada petición protegida.
+5. `POST /logout` marca el token como revocado: deja de servir aunque no haya vencido.
 
-El payload contiene `sub` (id del usuario), `email`, `iat` y `exp`. Está codificado en Base64URL, no cifrado: no lleva contraseñas.
+### Historial de tokens
+
+`GET /tokens` devuelve los tokens del usuario, del más reciente al más antiguo. Nunca incluye el token en sí:
+
+```json
+[{ "id": "b1f0…", "issuedAt": "2026-11-08T20:00:00.000Z", "expiresAt": "2026-11-09T20:00:00.000Z",
+   "revokedAt": null, "status": "active", "current": true, "ip": "187.x.x.x", "userAgent": "okhttp/4.12.0" }]
+```
+
+`status` es `active`, `expired` o `revoked`.
+
+El payload contiene `sub` (id del usuario), `email`, `jti` (identificador único), `iat` y `exp`. Está codificado en Base64URL, no cifrado: no lleva contraseñas.
 
 ## 6. Datos semilla
 
@@ -145,7 +161,7 @@ Un usuario recién registrado empieza sin plantas, lo que permite probar el esta
 cd backend
 npm start          # http://127.0.0.1:3000  ·  emulador: http://10.0.2.2:3000/
 npm run start:fresh  # restaura los datos de la semilla
-npm test           # 9 pruebas automáticas (node --test)
+npm test           # 12 pruebas automáticas (node --test)
 ```
 
 Prueba manual con curl (en PowerShell usa `curl.exe`):
