@@ -1,6 +1,9 @@
 package com.upchiapas.plantas.di
 
 import android.content.Context
+import com.upchiapas.plantas.auth.data.remote.AuthApiService
+import com.upchiapas.plantas.auth.data.repository.AuthRepositoryImpl
+import com.upchiapas.plantas.auth.domain.repository.AuthRepository
 import com.upchiapas.plantas.core.network.AuthInterceptor
 import com.upchiapas.plantas.core.session.SessionStorage
 import com.upchiapas.plantas.core.session.SharedPrefsSessionStorage
@@ -19,9 +22,6 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
  */
 class AppContainer(context: Context) {
 
-    // Emulador -> PC: 10.0.2.2 (json-server en el puerto 3000)
-    private val baseUrl = "http://10.0.2.2:3000/"
-
     val sessionStorage: SessionStorage = SharedPrefsSessionStorage(context.applicationContext)
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -34,17 +34,25 @@ class AppContainer(context: Context) {
 
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
-            .baseUrl(baseUrl)
+            .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
     }
 
-    private val plantsApiService: PlantsApiService by lazy {
-        retrofit.create(PlantsApiService::class.java)
+    private val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
+    private val plantsApiService: PlantsApiService by lazy { retrofit.create(PlantsApiService::class.java) }
+
+    val authRepository: AuthRepository by lazy {
+        AuthRepositoryImpl(authApiService, sessionStorage, json)
     }
 
     val plantsRepository: PlantsRepository by lazy {
-        PlantsRepositoryImpl(plantsApiService)
+        PlantsRepositoryImpl(plantsApiService, json)
+    }
+
+    companion object {
+        /** API desplegada en AWS (HTTPS). Con el servidor local usa "http://10.0.2.2:3000/". */
+        const val BASE_URL = "https://plantas-citlali.duckdns.org/"
     }
 }
