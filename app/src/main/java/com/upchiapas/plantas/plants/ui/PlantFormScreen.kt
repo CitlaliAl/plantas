@@ -23,12 +23,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.upchiapas.plantas.ui.components.FormField
 import com.upchiapas.plantas.ui.components.LoadingBox
 import com.upchiapas.plantas.ui.components.LoadingButton
+import com.upchiapas.plantas.ui.components.plantsTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +48,8 @@ fun PlantFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (viewModel.isEditing) "Editar planta" else "Nueva planta") },
+                title = { Text(if (viewModel.isEditing) "Editar planta" else "Nueva planta", fontWeight = FontWeight.Bold) },
+                colors = plantsTopBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")

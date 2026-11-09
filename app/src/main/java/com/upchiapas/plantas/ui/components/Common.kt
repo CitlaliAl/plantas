@@ -9,6 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -77,3 +82,24 @@ fun LoadingButton(text: String, isLoading: Boolean, onClick: () -> Unit, modifie
         }
     }
 }
+
+/** Barra superior verde, igual en todas las pantallas. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun plantsTopBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+    containerColor = MaterialTheme.colorScheme.primary,
+    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+)
+
+/** Fondo con degradado verde suave para las pantallas de acceso. */
+@Composable
+fun Modifier.gradientBackground(): Modifier = this.background(
+    Brush.verticalGradient(
+        listOf(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.background
+        )
+    )
+)

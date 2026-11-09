@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 data class PlantDetailUiState(
     val isLoading: Boolean = true,
@@ -18,6 +19,8 @@ data class PlantDetailUiState(
     val showDeleteDialog: Boolean = false,
     val isDeleting: Boolean = false,
     val deleted: Boolean = false,
+    val isWatering: Boolean = false,
+    val message: String? = null,
     val unauthorized: Boolean = false
 )
 
@@ -36,6 +39,21 @@ class PlantDetailViewModel(
             plantsRepository.getPlant(plantId).fold(
                 onSuccess = { plant -> _uiState.update { it.copy(isLoading = false, plant = plant) } },
                 onFailure = { e -> _uiState.update { it.withError(e) } }
+            )
+        }
+    }
+
+    /** Marca la planta como regada hoy: actualiza lastWateredDate y recalcula el próximo riego. */
+    fun waterToday() {
+        val plant = _uiState.value.plant ?: return
+        if (_uiState.value.isWatering) return
+        _uiState.update { it.copy(isWatering = true, error = null, message = null) }
+        viewModelScope.launch {
+            plantsRepository.updatePlant(plant.copy(lastWateredDate = LocalDate.now())).fold(
+                onSuccess = { updated ->
+                    _uiState.update { it.copy(isWatering = false, plant = updated, message = "¡Planta regada hoy!") }
+                },
+                onFailure = { e -> _uiState.update { it.withError(e).copy(isWatering = false) } }
             )
         }
     }
